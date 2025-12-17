@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1>Dashboard</h1>
+        
+        {% if not shop %}
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i>
+                Please <a href="{{ url_for('shop_setup') }}" class="alert-link">setup your shop details</a> to get started.
+            </div>
+        {% endif %}
+        
+        <div class="row g-4 mt-3">
+            <div class="col-md-4">
+                <div class="card text-white bg-primary">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h5 class="card-title">Shop Setup</h5>
+                                <p class="card-text">{{ 'Configured' if shop else 'Not Setup' }}</p>
+                            </div>
+                            <i class="bi bi-shop fs-1"></i>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="{{ url_for('shop_setup') }}" class="text-white text-decoration-none">
+                            Manage Shop <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card text-white bg-success">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h5 class="card-title">Items</h5>
+                                <p class="card-text">{{ items_count }} items</p>
+                            </div>
+                            <i class="bi bi-box fs-1"></i>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="{{ url_for('items') }}" class="text-white text-decoration-none">
+                            Manage Items <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card text-white bg-info">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h5 class="card-title">Bills</h5>
+                                <p class="card-text">{{ bills_count }} bills</p>
+                            </div>
+                            <i class="bi bi-file-text fs-1"></i>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="{{ url_for('bills') }}" class="text-white text-decoration-none">
+                            View Bills <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {% if shop and items_count > 0 %}
+            <div class="text-center mt-5">
+                <a href="{{ url_for('create_bill') }}" class="btn btn-primary btn-lg">
+                    <i class="bi bi-plus-circle"></i> Create New Bill
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

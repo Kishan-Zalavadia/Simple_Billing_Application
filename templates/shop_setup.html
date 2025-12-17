@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <h2>Shop Setup</h2>
+        
+        <form method="POST">
+            <div class="mb-3">
+                <label for="name" class="form-label">Shop Name *</label>
+                <input type="text" class="form-control" id="name" name="name" 
+                       value="{{ shop.name if shop else '' }}" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="address" class="form-label">Address *</label>
+                <textarea class="form-control" id="address" name="address" rows="3" required>{{ shop.address if shop else '' }}</textarea>
+            </div>
+            
+            <div class="mb-3">
+                <label for="contact_number" class="form-label">Contact Number *</label>
+                <input type="text" class="form-control" id="contact_number" name="contact_number" 
+                       value="{{ shop.contact_number if shop else '' }}" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="email" class="form-label">Email</label>
+                <input type="email" class="form-control" id="email" name="email" 
+                       value="{{ shop.email if shop else '' }}">
+            </div>
+            
+            <div class="mb-3">
+                <label for="tax_number" class="form-label">Tax Number (GST/VAT)</label>
+                <input type="text" class="form-control" id="tax_number" name="tax_number" 
+                       value="{{ shop.tax_number if shop else '' }}">
+            </div>
+            
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save"></i> Save Shop Details
+            </button>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

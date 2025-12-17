@@ -1,0 +1,321 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Create New Bill</h2>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- Customer Details -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Customer Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <label for="customer_name" class="form-label">Customer Name</label>
+                        <input type="text" class="form-control" id="customer_name">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="customer_contact" class="form-label">Contact Number</label>
+                        <input type="text" class="form-control" id="customer_contact">
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <label for="customer_address" class="form-label">Address</label>
+                    <textarea class="form-control" id="customer_address" rows="2"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Items Selection -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between">
+                <h5>Select Items</h5>
+                <button type="button" class="btn btn-sm btn-primary" onclick="addItemRow()">
+                    <i class="bi bi-plus"></i> Add Item
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="items-container">
+                    <!-- Item rows will be added here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bill Preview -->
+    <div class="col-md-4">
+        <div class="card sticky-top">
+            <div class="card-header">
+                <h5>Bill Preview</h5>
+            </div>
+            <div class="card-body">
+                <div id="bill-preview">
+                    <p class="text-muted">Add items to see bill preview</p>
+                </div>
+                <div class="mt-3">
+                    <label for="tax_rate" class="form-label">Tax Rate (%)</label>
+                    <input type="number" class="form-control" id="tax_rate" value="18" min="0" max="100" onchange="calculateBill()">
+                </div>
+                <div class="mt-3">
+                    <label class="form-label">Discount</label>
+                    <div class="row">
+                        <div class="col-6">
+                            <select class="form-select" id="discount_type" onchange="calculateBill()">
+                                <option value="percentage">Percentage (%)</option>
+                                <option value="amount">Amount (₹)</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <input type="number" class="form-control" id="discount_value" value="0" min="0" onchange="calculateBill()" placeholder="0">
+                        </div>
+                    </div>
+                </div>
+                <div class="d-grid gap-2 mt-4">
+                    <button type="button" class="btn btn-success" onclick="saveBill()">
+                        <i class="bi bi-save"></i> Save & Generate PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden item template -->
+<div id="item-row-template" style="display: none;">
+    <div class="row item-row mb-3 border-bottom pb-3">
+        <div class="col-md-5">
+            <select class="form-select item-select" onchange="calculateBill()">
+                <option value="">Select Item</option>
+                {% for item in items %}
+                    <option value="{{ item.id }}" data-price="{{ item.price }}">{{ item.name }} - ₹{{ "%.2f"|format(item.price) }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <input type="number" class="form-control quantity-input" placeholder="Qty" value="1" min="1" onchange="calculateBill()">
+        </div>
+        <div class="col-md-3">
+            <input type="text" class="form-control total-display" readonly placeholder="₹0.00">
+        </div>
+        <div class="col-md-1">
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeItemRow(this)">
+                <i class="bi bi-trash"></i>
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let billData = {
+    items: [],
+    subtotal: 0,
+    tax_rate: 18,
+    tax_amount: 0,
+    total_amount: 0
+};
+
+function addItemRow() {
+    const template = document.getElementById('item-row-template');
+    const container = document.getElementById('items-container');
+    const clone = template.cloneNode(true);
+    clone.id = '';
+    clone.style.display = 'block';
+    container.appendChild(clone);
+}
+
+function removeItemRow(button) {
+    button.closest('.item-row').remove();
+    calculateBill();
+}
+
+function calculateBill() {
+    const itemRows = document.querySelectorAll('.item-row:not(#item-row-template)');
+    const items = [];
+    
+    itemRows.forEach(row => {
+        const select = row.querySelector('.item-select');
+        const quantityInput = row.querySelector('.quantity-input');
+        const totalDisplay = row.querySelector('.total-display');
+        
+        if (select.value && quantityInput.value) {
+            const itemId = parseInt(select.value);
+            const quantity = parseInt(quantityInput.value);
+            const unitPrice = parseFloat(select.selectedOptions[0].dataset.price);
+            const totalPrice = quantity * unitPrice;
+            
+            totalDisplay.value = `₹${totalPrice.toFixed(2)}`;
+            
+            items.push({
+                item_id: itemId,
+                quantity: quantity,
+                unit_price: unitPrice,
+                total_price: totalPrice
+            });
+        } else {
+            totalDisplay.value = '₹0.00';
+        }
+    });
+    
+    const taxRate = parseFloat(document.getElementById('tax_rate').value) || 0;
+    const discount_type = document.getElementById('discount_type').value;
+    const discount_value = parseFloat(document.getElementById('discount_value').value) || 0;
+    
+    // Send to backend for calculation
+    fetch('/api/calculate_bill', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            items: items,
+            tax_rate: taxRate,
+            discount_type: discount_type,
+            discount_value: discount_value
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        billData = {
+            items: items,
+            subtotal: data.subtotal,
+            tax_rate: data.tax_rate,
+            tax_amount: data.tax_amount,
+            total_amount: data.total_amount,
+            discount_type: data.discount_type,
+            discount_value: data.discount_value,
+            discount_amount: data.discount_amount,
+            discounted_amount: data.discounted_amount
+        };
+        
+        updateBillPreview(data);
+    })
+    .catch(error => {
+        console.error('Error calculating bill:', error);
+    });
+}
+
+function updateBillPreview(data) {
+    console.log("data is here "+data)
+    const preview = document.getElementById('bill-preview');
+    
+    if (data.items.length === 0) {
+        preview.innerHTML = '<p class="text-muted">Add items to see bill preview</p>';
+        return;
+    }
+    
+    let html = '<div class="bill-summary">';
+    
+    // Items
+    data.items.forEach(item => {
+        html += `
+            <div class="d-flex justify-content-between mb-1">
+                <span>${item.name} x${item.quantity}</span>
+                <span>₹${item.total_price.toFixed(2)}</span>
+            </div>
+        `;
+    });
+    
+    html += '<hr>';
+    
+    // Subtotal
+    html += `
+        <div class="d-flex justify-content-between">
+            <span><strong>Subtotal:</strong></span>
+            <span><strong>₹${data.subtotal.toFixed(2)}</strong></span>
+        </div>
+    `;
+    
+    // Discount (show only if discount is applied)
+console.log("data lable"+data.discount_type)
+console.log("data lable"+data.discount_value)
+str = JSON.stringify(data);
+console.log(str);
+    if (data.discount_value > 0) {
+        const discountLabel = data.discount_type === 'percentage' ? 
+            `Discount (${data.discount_value}%):` : 'Discount:';
+        html += `
+            <div class="d-flex justify-content-between text-success">
+                <span>${discountLabel}</span>
+                <span>-₹${data.discount_amount.toFixed(2)}</span>
+            </div>
+            <div class="d-flex justify-content-between">
+                <span>After Discount:</span>
+                <span>₹${data.discounted_amount.toFixed(2)}</span>
+            </div>
+        `;
+    }
+    
+    // Tax
+    html += `
+        <div class="d-flex justify-content-between">
+            <span>Tax (${data.tax_rate}%):</span>
+            <span>₹${data.tax_amount.toFixed(2)}</span>
+        </div>
+    `;
+    
+    html += '<hr>';
+    
+    // Final Total
+    html += `
+        <div class="d-flex justify-content-between fw-bold fs-5">
+            <span>Total:</span>
+            <span>₹${data.total_amount.toFixed(2)}</span>
+        </div>
+    `;
+    
+    html += '</div>';
+    preview.innerHTML = html;
+}
+
+function saveBill() {
+    if (billData.items.length === 0) {
+        alert('Please add at least one item to the bill.');
+        return;
+    }
+    
+    const customerName = document.getElementById('customer_name').value;
+    const customerAddress = document.getElementById('customer_address').value;
+    const customerContact = document.getElementById('customer_contact').value;
+    
+    const billToSave = {
+        ...billData,
+        customer_name: customerName,
+        customer_address: customerAddress,
+        customer_contact: customerContact
+    };
+    
+    fetch('/bills/save', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(billToSave)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Bill ${data.bill_number} created successfully!`);
+            // Download PDF
+            window.open(`/bills/download/${data.bill_id}`, '_blank');
+            // Redirect to bills page
+            window.location.href = '/bills';
+        } else {
+            alert('Error creating bill. Please try again.');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving bill:', error);
+        alert('Error creating bill. Please try again.');
+    });
+}
+
+// Add first item row on page load
+document.addEventListener('DOMContentLoaded', function() {
+    addItemRow();
+});
+</script>
+{% endblock %}
